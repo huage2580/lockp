@@ -1,0 +1,69 @@
+apply plugin: 'java-library'
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = "UTF-8"
+}
+
+sourceCompatibility = "1.7"
+targetCompatibility = "1.7"
+
+//打包jar包为dex文件
+task makeDexFile(type:Exec){
+    workingDir 'build/libs/'
+    //on windows:
+    commandLine 'cmd', '/c', dxpath +' --dex --output=classes.dex server.jar'
+    standardOutput = new ByteArrayOutputStream()
+    ext.output = {
+        return standardOutput.toString()
+    }
+}
+task unzip(type: Copy){
+    delete('build/libs/dex')
+    from zipTree('build/libs/server.jar')
+    into { 'build/libs/dex' }
+    exclude 'com/**'
+}
+task copyDex(type: Copy){
+    from 'build/libs/classes.dex'
+    into 'build/libs/dex'
+}
+
+task dexJar(type:Zip){
+    destinationDir = file('build/output')
+    archiveName = 'server.jar'
+    from('build/libs/dex'){
+        into '/'
+    }
+}
+makeDexFile.dependsOn(jar)
+unzip.dependsOn(makeDexFile)
+copyDex.dependsOn(unzip)
+dexJar.dependsOn(copyDex)
+
+task runXjServer <<{
+    //推送映射
+    def pushLine =  'adb push .\\server.jar sdcard '.execute([],new File(project.buildDir,'output')).text.trim()
+    println '----推送映射：'+pushLine
+    //更改目录
+    'adb shell cp -f sdcard/server.jar data/local/tmp/ '.execute([],project.rootDir).text.trim()
+    //执行映射
+    def runLine =  'adb shell chmod 777 /data/local/tmp/server.jar '.execute([],project.rootDir).text.trim()
+    println '可执行权限:'+runLine
+    runLine =  'adb shell chown shell /data/local/tmp/server.jar'.execute([],project.rootDir).text.trim()
+    println '用户组更改:'+runLine
+    runLine =  'adb shell export CLASSPATH=/data/local/tmp/server.jar'.execute([],project.rootDir).text.trim()
+    println '导入classpath:'+runLine
+    Process shell = 'adb shell'.execute([],project.rootDir)
+    shell.out.write('app_process -Djava.class.path=/data/local/tmp/server.jar /data/local/tmp com.hua.lockp.Server &\n'.bytes)
+    shell.out.flush()
+//    shell.destroy()
+//    'adb shell "app_process -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005 -Djava.class.path=/data/local/tmp/.xiaoji/xjServer.jar /data/local/tmp/.xiaoji com.xiaoji.inject.XiaojiInjectServer 1 2 3 &"'.execute([],project.rootDir)
+    println '运行成功了吧...'
+    'adb forward tcp:5005 tcp:5005'.execute([],project.rootDir)
+    println '****转发调试端口****'
+}
+runXjServer.dependsOn(dexJar)

@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">lockIt</string>
+    <string name="tip">先激活服务，然后添加控件到桌面 \n 复制以下命令，电脑端执行:\n </string>
+    <string name="pc_cmd">adb shell sh /data/data/com.toxic.lockp/lockp.bash</string>
+    <string name="hy_cmd">sh /data/data/com.toxic.lockp/lockp.bash</string>
+    <string name="pc_go">复制去PC执行</string>
+    <string name="hy_go">复制去黑阈执行</string>
+    <string name="success">复制成功!</string>
+    <string name="appwidget_text">EXAMPLE</string>
+    <string name="add_widget">Add widget</string>
+</resources>
